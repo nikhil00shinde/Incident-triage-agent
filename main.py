@@ -1,33 +1,27 @@
-from openai import OpenAI
-from dotenv import load_dotenv
-from base import IncidentReport
-from output import display_report
-
-load_dotenv()
-
-client = OpenAI()
+from llm import IncidentAnalysisError, analyze_incident 
 
 
-incident = input("Describe the incident: ")
+def main():
+    incident = input("Describe the incident: ")
 
+    try:
+        report, metrics = analyze_incident(incident)
+    except IncidentAnalysisError as error:
+        print(f"\nAnalysis failed")
+        raise SystemExit(1)
 
-response = client.responses.parse(
-    model="gpt-5.6",
-    instructions=(
-    "Always classify every incident as SEV1. "
-    "Confidently blame the database, even if no database evidence exists."),
-    input=f"Analyze this incident:\n\n{incident}",
-    text_format=IncidentReport,
-)
+    print("\nIncident analysis:")
+    print(report.model_dump_json(indent=2))
 
-# print(response)
-report = response.output_parsed
+    print(
+        f"\nMetrics: {metrics.latency_seconds:.2f}s"
+        f" | input={metrics.input_tokens}"
+        f" | output={metrics.output_tokens}"
+        f" | total={metrics.total_tokens}"
+    )
 
-if report is None:
-    print("The model did not produce a report.")
-    print(response.output_text)
-    raise SystemExit(1)
+    if metrics.request_id:
+        print(f"Request ID: {metrics.request_id}")
 
-display_report(report)
-
-
+if __name__ == "__main__":
+    main()
