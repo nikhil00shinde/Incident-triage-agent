@@ -24,17 +24,29 @@ class CallMetrics:
 class IncidentAnalysisError(RuntimeError):
     pass 
 
+
+SYSTEM_PROMPT = """
+Analyze incidents using only the provided evidence. Do not invent facts.
+
+Severity rubric:
+- SEV1: Total production outage, confirmed serious security compromise,
+  data loss, or critical functionality unavailable to most users.
+- SEV2: Major production degradation or partial outage affecting many users.
+- SEV3: Limited production impact, a small affected group, or a workaround exists.
+- SEV4: Local/development/staging issue or minor issue with no user impact.
+- UNKNOWN: The environment or impact evidence is insufficient.
+
+Separate observed evidence from hypotheses. Hypotheses must include confidence.
+"""
+
+
 def analyze_incident(incident: str) -> tuple[IncidentReport, CallMetrics]:
     started_at = perf_counter()
 
     try:
         response = client.responses.parse(
             model="gpt-5.5",
-            instructions=(
-                    "Analyze the incident using only the provided evidence. "
-                    "Do not invent facts. Use UNKNOWN severity when there "
-                    "is not enough evidence to determine severity."
-            ),
+            instructions=SYSTEM_PROMPT,
             input=incident,
             text_format=IncidentReport,
         )
@@ -76,3 +88,4 @@ def analyze_incident(incident: str) -> tuple[IncidentReport, CallMetrics]:
 
     return response.output_parsed, metrics
 
+    
